@@ -5,7 +5,7 @@
     "nixpacksPlan": {
       "phases": {
         "setup": {
-          "nixPkgs": ["ffmpeg"]
+          "nixPkgs": ["python311", "ffmpeg"]
         }
       }
     }
@@ -15,10 +15,6 @@
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
-    "resources": {
-      "limits": {
-        "memoryMB": 1024
-      }
-    }
+    "resources": { "limits": { "memoryMB": 1024 } }
   }
 }
