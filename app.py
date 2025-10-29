@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from flask import Flask, request, jsonify, send_file, Response
+import requests
 
 # Third-party deps
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
@@ -13,6 +14,7 @@ from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, No
 
 APP_NAME = "YouTube Transcript App"
 CACHE_MAX_ITEMS = int(os.environ.get("CACHE_MAX_ITEMS", "100"))
+BROWSERLESS_TOKEN = os.environ.get("BROWSERLESS_TOKEN")
 
 BASE_DIR = Path(__file__).parent.resolve()
 CACHE_DIR = Path(os.environ.get("CACHE_DIR", BASE_DIR / "cache"))
@@ -154,6 +156,7 @@ def status():
         "cache_dir": str(CACHE_DIR),
         "cache_items": total,
         "captions_only": True,
+        "browserless": bool(BROWSERLESS_TOKEN),
         "running": True,
     })
 
@@ -215,6 +218,59 @@ def health():
 def clear_cache():
     stats = cleanup_cache(max_items=0)
     return jsonify({"cleared": stats.get("removed", 0)})
+
+
+def scrape_tactiq_via_browserless(video_url: str) -> Optional[str]:
+    if not BROWSERLESS_TOKEN:
+        return None
+    endpoint = f"https://chrome.browserless.io/playwright?token={BROWSERLESS_TOKEN}"
+    code = f"""
+    const { chromium } = require('playwright');
+    const browser = await chromium.launch();
+    const page = await browser.newPage();
+    await page.goto('https://tactiq.io/tools/youtube-transcript', {{ waitUntil: 'domcontentloaded' }});
+    await page.waitForTimeout(1500);
+    const input = await page.locator('input[type="url"], input');
+    await input.fill('{video_url.replace("'", "\\'")}');
+    const btn = await page.locator('button:has-text("Get Video Transcript")');
+    await btn.click();
+    await page.waitForTimeout(3000);
+    const possible = ['pre', 'textarea', '[data-transcript]', '.transcript', '.output'];
+    let text = '';
+    for (const sel of possible) {{
+      const el = await page.$(sel);
+      if (el) {{ text = (await el.innerText()).trim(); if (text) break; }}
+    }}
+    if (!text) {{ text = (await page.content()); }}
+    await browser.close();
+    return text;
+    """
+    payload = {"code": code}
+    r = requests.post(endpoint, json=payload, timeout=90)
+    if r.status_code != 200:
+        return None
+    try:
+        data = r.json()
+        # Browserless returns { data: '<string>' } or raw text
+        if isinstance(data, dict) and 'data' in data:
+            return str(data['data'])
+        return r.text
+    except Exception:
+        return r.text
+
+
+@app.post('/api/tactiq')
+def api_tactiq():
+    body = request.get_json(silent=True) or {}
+    url = body.get('url') or ''
+    if not url:
+        return jsonify({"error": "Missing 'url'"}), 400
+    if not BROWSERLESS_TOKEN:
+        return jsonify({"error": "BROWSERLESS_TOKEN not configured.", "error_code": "NO_BROWSERLESS"}), 400
+    text = scrape_tactiq_via_browserless(url)
+    if not text:
+        return jsonify({"error": "Failed to fetch transcript from Tactiq.", "error_code": "TACTIQ_FAIL"}), 502
+    return jsonify({"transcript": text, "source": "tactiq"})
 
 
 @app.get("/api/download")

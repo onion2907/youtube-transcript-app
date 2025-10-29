@@ -38,15 +38,23 @@ Railway is a cloud platform that lets you deploy apps without complex setup. It 
 5. Choose your `youtube-transcript-app` repository
 6. Click "Deploy Now"
 
-### 4. Wait for Deployment
+### 4. Optional: Enable Browserless (recommended)
+
+Create a free Browserless account and get an API token. In Railway → Variables, add:
+
+- `BROWSERLESS_TOKEN` = your token
+
+The app will use Browserless to drive Playwright remotely when you click "Open in Tactiq". If not set, it will try local Playwright or open Tactiq in a new tab.
+
+### 5. Wait for Deployment
 - Railway will automatically:
   - Install Python 3.11
   - Install all dependencies from `requirements.txt`
-  - Download Faster-Whisper model (first time only)
+  - Install Playwright Chromium (via nixpacks plan)
   - Start your app
-- This takes 3-5 minutes on first deploy
+- This takes 2-4 minutes on first deploy
 
-### 5. Get Your App URL
+### 6. Get Your App URL
 1. Once deployed, click on your project
 2. Go to "Settings" tab
 3. Find "Domains" section

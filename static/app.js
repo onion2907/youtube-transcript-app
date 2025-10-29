@@ -84,6 +84,28 @@ function initApp() {
       setLoading(false);
     }
   });
+
+  const tactiqBtn = document.getElementById('tactiqBtn');
+  tactiqBtn.addEventListener('click', async () => {
+    const url = document.getElementById('url').value.trim();
+    if (!url) { alert('Paste a YouTube URL first.'); return; }
+    // Try server-side fetch via Browserless first
+    setLoading(true);
+    try {
+      const r = await fetchJSON('/api/tactiq', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      // Display like normal transcript result
+      showResult({ video_id: 'external', source: 'tactiq', model: 'captions', transcript: r.transcript, cached: false });
+    } catch (e) {
+      // Fallback: open tactiq for manual use
+      try { await navigator.clipboard.writeText(url); } catch (_) {}
+      window.open('https://tactiq.io/tools/youtube-transcript', '_blank');
+    } finally {
+      setLoading(false);
+    }
+  });
 }
 
 
