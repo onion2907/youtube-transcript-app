@@ -225,38 +225,83 @@ def scrape_tactiq_via_browserless(video_url: str) -> Optional[str]:
         return None
     endpoint = f"https://chrome.browserless.io/playwright?token={BROWSERLESS_TOKEN}"
     code = f"""
-    const { chromium } = require('playwright');
+    const {{ chromium }} = require('playwright');
     const browser = await chromium.launch();
     const page = await browser.newPage();
     await page.goto('https://tactiq.io/tools/youtube-transcript', {{ waitUntil: 'domcontentloaded' }});
-    await page.waitForTimeout(1500);
-    const input = await page.locator('input[type="url"], input');
-    await input.fill('{video_url.replace("'", "\\'")}');
-    const btn = await page.locator('button:has-text("Get Video Transcript")');
-    await btn.click();
-    await page.waitForTimeout(3000);
-    const possible = ['pre', 'textarea', '[data-transcript]', '.transcript', '.output'];
-    let text = '';
-    for (const sel of possible) {{
-      const el = await page.$(sel);
-      if (el) {{ text = (await el.innerText()).trim(); if (text) break; }}
+    await page.waitForTimeout(2000);
+    
+    // Try to find and fill the URL input
+    const inputSelectors = ['input[type="url"]', 'input[placeholder*="youtube"]', 'input[placeholder*="URL"]', 'input'];
+    let input = null;
+    for (const selector of inputSelectors) {{
+      try {{
+        input = await page.$(selector);
+        if (input) break;
+      }} catch (e) {{}}
     }}
-    if (!text) {{ text = (await page.content()); }}
+    
+    if (input) {{
+      await input.fill('{video_url.replace("'", "\\'")}');
+      await page.waitForTimeout(500);
+      
+      // Try to find and click submit button
+      const buttonSelectors = [
+        'button:has-text("Get Video Transcript")',
+        'button:has-text("Get Transcript")', 
+        'button[type="submit"]',
+        'button'
+      ];
+      
+      for (const selector of buttonSelectors) {{
+        try {{
+          const btn = await page.$(selector);
+          if (btn) {{
+            await btn.click();
+            break;
+          }}
+        }} catch (e) {{}}
+      }}
+      
+      await page.waitForTimeout(5000);
+    }}
+    
+    // Try to extract transcript text
+    const textSelectors = [
+      'pre', 'textarea', '[data-transcript]', '.transcript', '.output',
+      '.result', '.content', 'div[class*="transcript"]'
+    ];
+    
+    let text = '';
+    for (const selector of textSelectors) {{
+      try {{
+        const el = await page.$(selector);
+        if (el) {{
+          text = (await el.innerText()).trim();
+          if (text && text.length > 50) break;
+        }}
+      }} catch (e) {{}}
+    }}
+    
+    // Fallback: get all visible text
+    if (!text) {{
+      text = await page.evaluate(() => document.body.innerText);
+    }}
+    
     await browser.close();
     return text;
     """
     payload = {"code": code}
-    r = requests.post(endpoint, json=payload, timeout=90)
-    if r.status_code != 200:
-        return None
     try:
+        r = requests.post(endpoint, json=payload, timeout=120)
+        if r.status_code != 200:
+            return None
         data = r.json()
-        # Browserless returns { data: '<string>' } or raw text
         if isinstance(data, dict) and 'data' in data:
             return str(data['data'])
         return r.text
     except Exception:
-        return r.text
+        return None
 
 
 @app.post('/api/tactiq')
