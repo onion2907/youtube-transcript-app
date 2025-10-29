@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YouTube Transcript App</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <meta name="theme-color" content="#111" />
+</head>
+<body>
+  <header>
+    <h1>YouTube Transcript</h1>
+    <div id="status"></div>
+  </header>
+
+  <main>
+    <form id="form">
+      <label for="url">Paste YouTube URL</label>
+      <input id="url" name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." required />
+      <button type="submit">Get Transcript</button>
+    </form>
+
+    <section id="actions" class="hidden">
+      <button id="downloadBtn" disabled>Download .txt</button>
+      <button id="shareBtn" disabled>Share</button>
+    </section>
+
+    <section id="result" class="hidden">
+      <div class="meta">
+        <span id="source"></span>
+        <span id="model"></span>
+        <span id="video"></span>
+      </div>
+      <textarea id="transcript" readonly></textarea>
+    </section>
+  </main>
+
+  <footer>
+    <small>
+      <span id="about"></span>
+    </small>
+  </footer>
+
+  <script src="/static/app.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      initApp();
+    });
+  </script>
+  </body>
+  </html>
+
+
