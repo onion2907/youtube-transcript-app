@@ -61,6 +61,9 @@ function setLoading(isLoading) {
 
 function initApp() {
   loadStatus();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(()=>{});
+  }
   const form = document.getElementById('form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
