@@ -242,7 +242,8 @@ def scrape_tactiq_via_browserless(video_url: str) -> Optional[str]:
     }}
     
     if (input) {{
-      await input.fill('{video_url.replace("'", "\\'")}');
+      const url = '{video_url}';
+      await input.fill(url.replace(/'/g, "\\'"));
       await page.waitForTimeout(500);
       
       // Try to find and click submit button
