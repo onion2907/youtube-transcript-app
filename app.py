@@ -131,6 +131,15 @@ def download_audio(url: str, out_file: Path) -> None:
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        # Add headers to avoid 403 errors
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        # Add cookies and other workarounds
+        "cookiesfrombrowser": None,
+        "extractor_retries": 3,
+        "fragment_retries": 3,
+        "retries": 3,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
